@@ -3,27 +3,35 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { useLocation } from "wouter";
+import { useAuth } from "@/contexts/AuthContext";
+import { useToast } from "@/hooks/use-toast";
+import { Loader2 } from "lucide-react";
 
 export default function Login() {
-  const [, setLocation] = useLocation();
+  const { login } = useAuth();
+  const { toast } = useToast();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [role, setRole] = useState<string>("Applicant");
+  const [isLoading, setIsLoading] = useState(false);
 
-  const handleLogin = (e: React.FormEvent) => {
+  const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
-    console.log("Login attempt:", { email, password, role });
-    
-    // TODO: Implement actual authentication
-    // For now, redirect based on role
-    if (role === "Admin") {
-      setLocation("/admin/dashboard");
-    } else if (role === "Bot Mimic") {
-      setLocation("/bot/dashboard");
-    } else {
-      setLocation("/dashboard");
+    setIsLoading(true);
+
+    try {
+      await login(email, password);
+      toast({
+        title: "Success",
+        description: "Logged in successfully",
+      });
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: error.message || "Login failed",
+        variant: "destructive",
+      });
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -47,6 +55,7 @@ export default function Login() {
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 required
+                disabled={isLoading}
                 data-testid="input-email"
               />
             </div>
@@ -59,26 +68,36 @@ export default function Login() {
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 required
+                disabled={isLoading}
                 data-testid="input-password"
               />
             </div>
-            <div className="space-y-2">
-              <Label htmlFor="role">Login As</Label>
-              <Select value={role} onValueChange={setRole}>
-                <SelectTrigger id="role" data-testid="select-role">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="Applicant">Applicant</SelectItem>
-                  <SelectItem value="Admin">Admin</SelectItem>
-                  <SelectItem value="Bot Mimic">Bot Mimic</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            <Button type="submit" className="w-full" data-testid="button-login">
-              Sign In
+            <Button type="submit" className="w-full" disabled={isLoading} data-testid="button-login">
+              {isLoading ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Signing in...
+                </>
+              ) : (
+                "Sign In"
+              )}
             </Button>
           </form>
+
+          <div className="mt-6 pt-6 border-t">
+            <p className="text-sm text-muted-foreground mb-3">Demo Accounts:</p>
+            <div className="space-y-2 text-xs">
+              <div className="bg-muted p-2 rounded">
+                <strong>Applicant:</strong> applicant@example.com / password123
+              </div>
+              <div className="bg-muted p-2 rounded">
+                <strong>Admin:</strong> admin@example.com / password123
+              </div>
+              <div className="bg-muted p-2 rounded">
+                <strong>Bot Mimic:</strong> bot@example.com / password123
+              </div>
+            </div>
+          </div>
         </CardContent>
       </Card>
     </div>

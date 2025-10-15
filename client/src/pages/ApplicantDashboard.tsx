@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { FileText, Clock, CheckCircle, XCircle, Plus } from "lucide-react";
 import { MetricCard } from "@/components/MetricCard";
 import { ApplicationCard } from "@/components/ApplicationCard";
@@ -8,72 +9,51 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { SimpleChart } from "@/components/SimpleChart";
 import { useLocation } from "wouter";
-
-//TODO: Remove mock data
-const mockApplications = [
-  {
-    id: "1",
-    jobTitle: "Senior Full Stack Developer",
-    company: "TechCorp Inc.",
-    status: "Interview" as const,
-    roleType: "Technical" as const,
-    appliedDate: "Oct 10, 2025",
-    lastUpdate: "2 hours ago",
-  },
-  {
-    id: "2",
-    jobTitle: "Frontend Engineer",
-    company: "StartupXYZ",
-    status: "Reviewed" as const,
-    roleType: "Technical" as const,
-    appliedDate: "Oct 8, 2025",
-    lastUpdate: "1 day ago",
-  },
-  {
-    id: "3",
-    jobTitle: "Marketing Manager",
-    company: "Growth Solutions",
-    status: "Applied" as const,
-    roleType: "Non-Technical" as const,
-    appliedDate: "Oct 12, 2025",
-    lastUpdate: "3 hours ago",
-  },
-];
-
-//TODO: Remove mock data
-const mockActivities = [
-  {
-    action: "Status changed to Interview",
-    timestamp: "Oct 14, 2025 10:30 AM",
-    updatedBy: "Bot Mimic",
-    isBot: true,
-    comment: "Application automatically progressed after technical screening completion",
-  },
-  {
-    action: "Status changed to Reviewed",
-    timestamp: "Oct 13, 2025 2:15 PM",
-    updatedBy: "John Admin",
-    comment: "Initial screening completed. Moving to next stage.",
-  },
-  {
-    action: "Application submitted",
-    timestamp: "Oct 10, 2025 9:00 AM",
-    updatedBy: "System",
-  },
-];
+import { api } from "@/lib/api";
 
 export default function ApplicantDashboard() {
   const [, setLocation] = useLocation();
-  const [selectedApp, setSelectedApp] = useState<typeof mockApplications[0] | null>(null);
+  const [selectedAppId, setSelectedAppId] = useState<number | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
 
-  const filteredApplications = mockApplications.filter((app) => {
-    const matchesSearch = app.jobTitle.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                         app.company.toLowerCase().includes(searchQuery.toLowerCase());
+  const { data: applications = [] } = useQuery({
+    queryKey: ["/api/applications/my"],
+    queryFn: api.getMyApplications,
+  });
+
+  const { data: activities = [] } = useQuery({
+    queryKey: ["/api/applications", selectedAppId, "activities"],
+    queryFn: () => api.getActivities(selectedAppId!),
+    enabled: !!selectedAppId,
+  });
+
+  const selectedApp = applications.find((app: any) => app.id === selectedAppId);
+
+  const filteredApplications = applications.filter((app: any) => {
+    const matchesSearch =
+      app.job?.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      app.job?.company.toLowerCase().includes(searchQuery.toLowerCase());
     const matchesStatus = statusFilter === "all" || app.status === statusFilter;
     return matchesSearch && matchesStatus;
   });
+
+  const statusCounts = {
+    applied: applications.filter((a: any) => a.status === "Applied").length,
+    inProgress: applications.filter(
+      (a: any) => a.status === "Reviewed" || a.status === "Interview"
+    ).length,
+    interview: applications.filter((a: any) => a.status === "Interview").length,
+    rejected: applications.filter((a: any) => a.status === "Rejected").length,
+  };
+
+  const formatActivities = activities.map((activity: any) => ({
+    action: activity.action,
+    timestamp: new Date(activity.createdAt).toLocaleString(),
+    updatedBy: activity.updatedBy?.name || "System",
+    isBot: activity.isAutomated === 1,
+    comment: activity.comment || undefined,
+  }));
 
   return (
     <div className="p-6 space-y-6">
@@ -91,25 +71,12 @@ export default function ApplicantDashboard() {
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         <MetricCard
           title="Total Applications"
-          value={mockApplications.length}
+          value={applications.length}
           icon={FileText}
-          trend={{ value: 12, isPositive: true }}
         />
-        <MetricCard
-          title="In Progress"
-          value={mockApplications.filter(a => a.status === "Reviewed" || a.status === "Interview").length}
-          icon={Clock}
-        />
-        <MetricCard
-          title="Interviews"
-          value={mockApplications.filter(a => a.status === "Interview").length}
-          icon={CheckCircle}
-        />
-        <MetricCard
-          title="Rejected"
-          value={0}
-          icon={XCircle}
-        />
+        <MetricCard title="In Progress" value={statusCounts.inProgress} icon={Clock} />
+        <MetricCard title="Interviews" value={statusCounts.interview} icon={CheckCircle} />
+        <MetricCard title="Rejected" value={statusCounts.rejected} icon={XCircle} />
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
@@ -117,16 +84,37 @@ export default function ApplicantDashboard() {
           title="Applications by Status"
           type="donut"
           data={[
-            { label: "Applied", value: 1, color: "hsl(var(--status-applied))" },
-            { label: "Reviewed", value: 1, color: "hsl(var(--status-in-progress))" },
-            { label: "Interview", value: 1, color: "hsl(var(--status-interview))" },
+            {
+              label: "Applied",
+              value: statusCounts.applied || 1,
+              color: "hsl(var(--status-applied))",
+            },
+            {
+              label: "In Progress",
+              value: statusCounts.inProgress || 1,
+              color: "hsl(var(--status-in-progress))",
+            },
+            {
+              label: "Interview",
+              value: statusCounts.interview || 1,
+              color: "hsl(var(--status-interview))",
+            },
           ]}
         />
         <SimpleChart
           title="Applications by Type"
           data={[
-            { label: "Technical", value: 2, color: "hsl(var(--chart-1))" },
-            { label: "Non-Technical", value: 1, color: "hsl(var(--chart-3))" },
+            {
+              label: "Technical",
+              value: applications.filter((a: any) => a.job?.type === "Technical").length || 1,
+              color: "hsl(var(--chart-1))",
+            },
+            {
+              label: "Non-Technical",
+              value:
+                applications.filter((a: any) => a.job?.type === "Non-Technical").length || 1,
+              color: "hsl(var(--chart-3))",
+            },
           ]}
         />
       </div>
@@ -156,23 +144,38 @@ export default function ApplicantDashboard() {
         </div>
 
         <div className="space-y-3">
-          {filteredApplications.map((app) => (
-            <ApplicationCard
-              key={app.id}
-              {...app}
-              onViewDetails={() => setSelectedApp(app)}
-            />
-          ))}
+          {filteredApplications.length === 0 ? (
+            <div className="text-center py-12">
+              <p className="text-muted-foreground mb-4">No applications found</p>
+              <Button onClick={() => setLocation("/new-application")}>
+                Create Your First Application
+              </Button>
+            </div>
+          ) : (
+            filteredApplications.map((app: any) => (
+              <ApplicationCard
+                key={app.id}
+                id={app.id.toString()}
+                jobTitle={app.job?.title || "Unknown Job"}
+                company={app.job?.company || "Unknown Company"}
+                status={app.status}
+                roleType={app.job?.type || "Technical"}
+                appliedDate={new Date(app.createdAt).toLocaleDateString()}
+                lastUpdate={new Date(app.updatedAt).toLocaleDateString()}
+                onViewDetails={() => setSelectedAppId(app.id)}
+              />
+            ))
+          )}
         </div>
       </div>
 
       {selectedApp && (
         <ApplicationDetailsPanel
-          jobTitle={selectedApp.jobTitle}
-          company={selectedApp.company}
+          jobTitle={selectedApp.job?.title || "Unknown Job"}
+          company={selectedApp.job?.company || "Unknown Company"}
           status={selectedApp.status}
-          activities={mockActivities}
-          onClose={() => setSelectedApp(null)}
+          activities={formatActivities}
+          onClose={() => setSelectedAppId(null)}
         />
       )}
     </div>

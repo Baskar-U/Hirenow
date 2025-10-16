@@ -16,6 +16,9 @@ import BotDashboard from "@/pages/BotDashboard";
 import NewApplication from "@/pages/NewApplication";
 import JobPostings from "@/pages/JobPostings";
 import AdminApplications from "@/pages/AdminApplications";
+import MyApplications from "@/pages/MyApplications";
+import BotQueue from "@/pages/BotQueue";
+import BotActivity from "@/pages/BotActivity";
 
 function ProtectedRoute({ children, allowedRoles }: { children: React.ReactNode; allowedRoles?: string[] }) {
   const { user, isLoading } = useAuth();
@@ -62,6 +65,11 @@ function AppContent() {
                   <ApplicantDashboard />
                 </ProtectedRoute>
               </Route>
+              <Route path="/applications">
+                <ProtectedRoute allowedRoles={["Applicant"]}>
+                  <MyApplications />
+                </ProtectedRoute>
+              </Route>
               <Route path="/new-application">
                 <ProtectedRoute allowedRoles={["Applicant"]}>
                   <NewApplication />
@@ -87,6 +95,16 @@ function AppContent() {
               <Route path="/bot/dashboard">
                 <ProtectedRoute allowedRoles={["Bot Mimic"]}>
                   <BotDashboard />
+                </ProtectedRoute>
+              </Route>
+              <Route path="/bot/queue">
+                <ProtectedRoute allowedRoles={["Bot Mimic"]}>
+                  <BotQueue />
+                </ProtectedRoute>
+              </Route>
+              <Route path="/bot/activity">
+                <ProtectedRoute allowedRoles={["Bot Mimic"]}>
+                  <BotActivity />
                 </ProtectedRoute>
               </Route>
               

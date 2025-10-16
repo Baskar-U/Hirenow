@@ -2,19 +2,20 @@ import { useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Label } from "@/components/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useLocation } from "wouter";
 import { ArrowLeft } from "lucide-react";
 import { api } from "@/lib/api";
 import { queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
-import { RoleBadge } from "@/components/RoleBadge";
+import { JobCard } from "@/components/JobCard";
+import { ApplicationForm } from "@/components/ApplicationForm";
 
 export default function NewApplication() {
   const [, setLocation] = useLocation();
   const { toast } = useToast();
-  const [selectedJobId, setSelectedJobId] = useState<string>("");
+  const [appliedJobs, setAppliedJobs] = useState<Set<number>>(new Set());
+  const [selectedJob, setSelectedJob] = useState<any>(null);
+  const [isFormOpen, setIsFormOpen] = useState(false);
 
   const { data: jobs = [] } = useQuery({
     queryKey: ["/api/jobs"],
@@ -22,14 +23,16 @@ export default function NewApplication() {
   });
 
   const createMutation = useMutation({
-    mutationFn: (jobId: number) => api.createApplication(jobId),
-    onSuccess: () => {
+    mutationFn: (applicationData: any) => api.createDetailedApplication(applicationData),
+    onSuccess: (_, applicationData) => {
       queryClient.invalidateQueries({ queryKey: ["/api/applications/my"] });
+      setAppliedJobs(prev => new Set([...prev, applicationData.jobId]));
+      setIsFormOpen(false);
+      setSelectedJob(null);
       toast({
         title: "Success",
         description: "Application submitted successfully",
       });
-      setLocation("/dashboard");
     },
     onError: (error: any) => {
       toast({
@@ -40,23 +43,17 @@ export default function NewApplication() {
     },
   });
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!selectedJobId) {
-      toast({
-        title: "Error",
-        description: "Please select a job",
-        variant: "destructive",
-      });
-      return;
-    }
-    createMutation.mutate(parseInt(selectedJobId));
+  const handleApply = (job: any) => {
+    setSelectedJob(job);
+    setIsFormOpen(true);
   };
 
-  const selectedJob = jobs.find((job: any) => job.id === parseInt(selectedJobId));
+  const handleSubmitApplication = (applicationData: any) => {
+    createMutation.mutate(applicationData);
+  };
 
   return (
-    <div className="p-6 max-w-4xl mx-auto space-y-6">
+    <div className="p-6 max-w-6xl mx-auto space-y-6">
       <Button
         variant="ghost"
         onClick={() => setLocation("/dashboard")}
@@ -68,78 +65,54 @@ export default function NewApplication() {
 
       <Card>
         <CardHeader>
-          <CardTitle>Create New Application</CardTitle>
+          <CardTitle>Available Job Postings</CardTitle>
           <CardDescription>
-            Select a job posting and submit your application
+            Browse available job postings and apply directly by clicking "Apply Now"
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <form onSubmit={handleSubmit} className="space-y-6">
-            <div className="space-y-2">
-              <Label htmlFor="job">Select Job</Label>
-              <Select value={selectedJobId} onValueChange={setSelectedJobId}>
-                <SelectTrigger id="job" data-testid="select-job">
-                  <SelectValue placeholder="Choose a job posting" />
-                </SelectTrigger>
-                <SelectContent>
-                  {jobs.map((job: any) => (
-                    <SelectItem key={job.id} value={job.id.toString()}>
-                      {job.title} - {job.company}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-
-            {selectedJob && (
-              <Card>
-                <CardHeader>
-                  <div className="flex items-start justify-between gap-4">
-                    <div className="flex-1">
-                      <CardTitle className="text-lg">{selectedJob.title}</CardTitle>
-                      <p className="text-sm text-muted-foreground mt-1">{selectedJob.company}</p>
-                    </div>
-                    <RoleBadge type={selectedJob.type} />
-                  </div>
-                </CardHeader>
-                <CardContent className="space-y-3">
-                  {selectedJob.description && (
-                    <div>
-                      <p className="text-sm font-medium">Description</p>
-                      <p className="text-sm text-muted-foreground mt-1">{selectedJob.description}</p>
-                    </div>
-                  )}
-                  {selectedJob.requirements && (
-                    <div>
-                      <p className="text-sm font-medium">Requirements</p>
-                      <p className="text-sm text-muted-foreground mt-1">{selectedJob.requirements}</p>
-                    </div>
-                  )}
-                  {selectedJob.type === "Technical" && (
-                    <p className="text-xs text-status-bot bg-status-bot/10 p-2 rounded">
-                      ✨ This is a Technical role - status updates will be automated by Bot Mimic
-                    </p>
-                  )}
-                </CardContent>
-              </Card>
-            )}
-
-            <div className="flex gap-3 justify-end">
-              <Button
-                type="button"
-                variant="outline"
-                onClick={() => setLocation("/dashboard")}
-                data-testid="button-cancel"
-              >
-                Cancel
-              </Button>
-              <Button type="submit" disabled={!selectedJobId || createMutation.isPending} data-testid="button-submit">
-                {createMutation.isPending ? "Submitting..." : "Submit Application"}
+          {jobs.length === 0 ? (
+            <div className="text-center py-12">
+              <p className="text-muted-foreground mb-4">No job postings available at the moment</p>
+              <Button onClick={() => setLocation("/dashboard")}>
+                Back to Dashboard
               </Button>
             </div>
-          </form>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              {jobs.map((job: any) => (
+                <JobCard
+                  key={job.id}
+                  id={job.id}
+                  title={job.title}
+                  company={job.company}
+                  description={job.description}
+                  requirements={job.requirements}
+                  requiredSkills={job.requiredSkills || []}
+                  type={job.type}
+                  createdAt={job.createdAt}
+                  onApply={() => handleApply(job)}
+                  isApplying={createMutation.isPending}
+                  isApplied={appliedJobs.has(job.id)}
+                />
+              ))}
+            </div>
+          )}
         </CardContent>
       </Card>
+
+      {selectedJob && (
+        <ApplicationForm
+          isOpen={isFormOpen}
+          onClose={() => {
+            setIsFormOpen(false);
+            setSelectedJob(null);
+          }}
+          job={selectedJob}
+          onSubmit={handleSubmitApplication}
+          isSubmitting={createMutation.isPending}
+        />
+      )}
     </div>
   );
 }

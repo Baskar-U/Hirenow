@@ -31,6 +31,7 @@ export const jobs = pgTable("jobs", {
   company: text("company").notNull(),
   description: text("description"),
   requirements: text("requirements"),
+  requiredSkills: text("required_skills"), // JSON string array of skills
   type: jobTypeEnum("type").notNull(),
   createdById: integer("created_by_id").notNull().references(() => users.id),
   createdAt: timestamp("created_at").defaultNow().notNull(),
@@ -105,12 +106,24 @@ export const insertUserSchema = createInsertSchema(users).pick({
   role: true,
 });
 
-export const insertJobSchema = createInsertSchema(jobs).pick({
-  title: true,
-  company: true,
-  description: true,
-  requirements: true,
-  type: true,
+export const insertJobSchema = z.object({
+  title: z.string().min(1, "Title is required"),
+  company: z.string().min(1, "Company is required"),
+  description: z.string().optional(),
+  requirements: z.string().optional(),
+  requiredSkills: z.array(z.string()).optional().default([]),
+  type: z.enum(["Technical", "Non-Technical"]),
+}).transform((data) => {
+  console.log("=== ZOD SCHEMA TRANSFORM DEBUG ===");
+  console.log("Input data:", data);
+  console.log("requiredSkills before transform:", data.requiredSkills);
+  const result = {
+    ...data,
+    requiredSkills: data.requiredSkills || []
+  };
+  console.log("requiredSkills after transform:", result.requiredSkills);
+  console.log("=== END ZOD TRANSFORM DEBUG ===");
+  return result;
 });
 
 export const insertApplicationSchema = createInsertSchema(applications).pick({

@@ -1,15 +1,30 @@
 import { Badge } from "@/components/ui/badge";
 import { Check, Clock, UserCheck, X, MessageSquare } from "lucide-react";
 
-type StatusType = "Applied" | "Reviewed" | "Interview" | "Offer" | "Rejected";
+type UiStatus = "Applied" | "Reviewed" | "Interview" | "Offer" | "Rejected";
 
-interface StatusBadgeProps {
-  status: StatusType;
+type StatusBadgeProps = {
+  status: string;
   className?: string;
-}
+};
 
 export function StatusBadge({ status, className }: StatusBadgeProps) {
-  const statusConfig = {
+  const mapToUiStatus: Record<string, UiStatus> = {
+    Submitted: "Applied",
+    "Under Review": "Reviewed",
+    "Interview Scheduled": "Interview",
+    "Offer Extended": "Offer",
+    Accepted: "Offer",
+    Applied: "Applied",
+    Reviewed: "Reviewed",
+    Interview: "Interview",
+    Offer: "Offer",
+    Rejected: "Rejected",
+  };
+
+  const normalized: UiStatus = mapToUiStatus[status] ?? "Applied";
+
+  const statusConfig: Record<UiStatus, { icon: any; className: string }> = {
     Applied: {
       icon: Clock,
       className: "bg-status-applied text-status-applied-foreground",
@@ -32,13 +47,13 @@ export function StatusBadge({ status, className }: StatusBadgeProps) {
     },
   };
 
-  const config = statusConfig[status];
+  const config = statusConfig[normalized];
   const Icon = config.icon;
 
   return (
-    <Badge className={`${config.className} ${className || ""}`} data-testid={`badge-status-${status.toLowerCase()}`}>
+    <Badge className={`${config.className} ${className || ""}`} data-testid={`badge-status-${normalized.toLowerCase()}`}>
       <Icon className="h-3 w-3 mr-1" />
-      {status}
+      {normalized}
     </Badge>
   );
 }

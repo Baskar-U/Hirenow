@@ -4,6 +4,7 @@ import { MetricCard } from "@/components/MetricCard";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { ApplicantCard } from "@/components/ApplicantCard";
 import { api } from "@/lib/api";
 import { queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
@@ -39,6 +40,17 @@ export default function BotDashboard() {
     app.status === "Applied" || app.status === "Reviewed" || app.status === "Interview"
   );
 
+  // Calculate applications ready for automation based on skills match
+  const appliedApps = technicalApps.filter((app: any) => app.status === "Applied");
+  const readyForReview = appliedApps.filter((app: any) => {
+    const requiredSkills = app.job?.requiredSkills || [];
+    const havingSkills = app.havingSkills || [];
+    if (requiredSkills.length === 0) return true; // No skills required, ready for review
+    const matchedSkills = requiredSkills.filter((skill: string) => havingSkills.includes(skill));
+    const matchRate = (matchedSkills.length / requiredSkills.length) * 100;
+    return matchRate >= 50;
+  });
+
   return (
     <div className="p-6 space-y-6">
       <div className="flex items-center justify-between gap-4 flex-wrap">
@@ -56,7 +68,7 @@ export default function BotDashboard() {
         </Button>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
         <MetricCard
           title="Queue Size"
           value={queueItems.length}
@@ -64,47 +76,46 @@ export default function BotDashboard() {
           description="Technical applications"
         />
         <MetricCard
-          title="Total Technical"
-          value={technicalApps.length}
+          title="Ready for Review"
+          value={readyForReview.length}
           icon={CheckCircle}
+          description="≥50% skills match"
         />
         <MetricCard
-          title="Pending Review"
-          value={technicalApps.filter((a: any) => a.status === "Applied").length}
+          title="Needs Review"
+          value={appliedApps.length - readyForReview.length}
           icon={Activity}
+          description="<50% skills match"
         />
         <MetricCard
           title="In Interview"
           value={technicalApps.filter((a: any) => a.status === "Interview").length}
           icon={Zap}
         />
+        <MetricCard
+          title="Total Technical"
+          value={technicalApps.length}
+          icon={Bot}
+        />
       </div>
 
       <Card>
         <CardHeader>
           <CardTitle>Automation Queue (Technical Roles)</CardTitle>
+          <p className="text-sm text-muted-foreground">
+            Click on any applicant card to view detailed information including skills analysis
+          </p>
         </CardHeader>
         <CardContent>
-          <div className="space-y-3">
+          <div className="space-y-4">
             {queueItems.length === 0 ? (
               <p className="text-center text-muted-foreground py-8">No items in queue</p>
             ) : (
               queueItems.map((app: any) => (
-                <div
+                <ApplicantCard
                   key={app.id}
-                  className="flex items-center justify-between p-4 rounded-lg border hover-elevate"
-                  data-testid={`queue-item-${app.id}`}
-                >
-                  <div className="flex-1">
-                    <p className="font-medium" data-testid={`text-queue-applicant-${app.id}`}>
-                      {app.applicant?.name || "Unknown Applicant"}
-                    </p>
-                    <p className="text-sm text-muted-foreground">{app.job?.title || "Unknown Job"}</p>
-                  </div>
-                  <div className="flex items-center gap-3">
-                    <Badge variant="outline">{app.status}</Badge>
-                  </div>
-                </div>
+                  application={app}
+                />
               ))
             )}
           </div>

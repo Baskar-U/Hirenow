@@ -60,9 +60,18 @@ export function ApplicationDetailsPanel({
                 <CardTitle className="text-base">Activity Timeline</CardTitle>
               </CardHeader>
               <CardContent>
-                {activities.map((activity, index) => (
-                  <ActivityItem key={index} {...activity} />
-                ))}
+                {activities.length > 0 ? (
+                  activities.map((activity, index) => (
+                    <ActivityItem key={index} {...activity} />
+                  ))
+                ) : (
+                  <div className="text-center py-8">
+                    <p className="text-muted-foreground">No activity recorded yet</p>
+                    <p className="text-xs text-muted-foreground mt-1">
+                      Activity will appear here as your application progresses
+                    </p>
+                  </div>
+                )}
               </CardContent>
             </Card>
           </div>

@@ -11,8 +11,5 @@
       "src": "/api/(.*)",
       "dest": "server/index.ts"
     }
-  ],
-  "env": {
-    "MONGODB_URI": "@mongodb_uri"
-  }
+  ]
 }

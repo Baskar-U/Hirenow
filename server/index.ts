@@ -7,11 +7,13 @@ import { connectMongo } from "./mongo";
 
 const app = express();
 
-// Enable CORS for production
+// Enable CORS for both development and production
 app.use(cors({
-  origin: process.env.NODE_ENV === 'production' 
-    ? ['https://hirenow-project.web.app'] 
-    : ['http://localhost:5173', 'http://localhost:3000'],
+  origin: [
+    'https://hirenow-project.web.app',
+    'http://localhost:5173', 
+    'http://localhost:3000'
+  ],
   credentials: true
 }));
 

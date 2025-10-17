@@ -2,7 +2,15 @@ import type { Request, Response, NextFunction } from "express";
 import jwt from "jsonwebtoken";
 import bcrypt from "bcryptjs";
 import { storage } from "./storage";
-import type { User } from "@shared/schema";
+// Define User type locally for MongoDB
+export interface User {
+  id: number;
+  email: string;
+  password: string;
+  name: string;
+  role: string;
+  createdAt: Date;
+}
 
 const JWT_SECRET = process.env.SESSION_SECRET || "your-secret-key-change-in-production";
 

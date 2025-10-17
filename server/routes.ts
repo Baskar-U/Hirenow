@@ -15,7 +15,7 @@ import {
   insertJobSchema,
   insertApplicationSchema,
   updateApplicationStatusSchema,
-} from "@shared/schema";
+} from "./schemas";
 
 export async function registerRoutes(app: Express): Promise<Server> {
   // Seed initial users

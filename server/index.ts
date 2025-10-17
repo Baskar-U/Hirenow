@@ -2,7 +2,16 @@ import "dotenv/config";
 import express, { type Request, Response, NextFunction } from "express";
 import cors from "cors";
 import { registerRoutes } from "./routes";
-import { setupVite, serveStatic, log } from "./vite";
+// Simple logging function for production
+function log(message: string) {
+  const formattedTime = new Date().toLocaleTimeString("en-US", {
+    hour: "numeric",
+    minute: "2-digit",
+    second: "2-digit",
+    hour12: true,
+  });
+  console.log(`${formattedTime} [express] ${message}`);
+}
 import { connectMongo } from "./mongo";
 
 const app = express();
@@ -62,11 +71,17 @@ app.use((req, res, next) => {
     throw err;
   });
 
-  if (app.get("env") === "development") {
-    await setupVite(app, server);
-  } else {
-    serveStatic(app);
-  }
+  // API-only server for production deployment
+  // Frontend will be deployed separately
+  
+  // Health check endpoint
+  app.get('/health', (req, res) => {
+    res.json({ 
+      status: 'OK', 
+      timestamp: new Date().toISOString(),
+      environment: process.env.NODE_ENV || 'development'
+    });
+  });
 
   const port = parseInt(process.env.PORT || '5000', 10);
   server.listen({

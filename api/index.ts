@@ -12,7 +12,9 @@ app.use(cors({
     'https://hirenow-project.web.app',
     'http://localhost:5173', 
     'http://localhost:3000',
-    'https://hirenow-bh6v.vercel.app'
+    'https://hirenow-bh6v.vercel.app',
+    'https://hirenow-frontend.netlify.app', // Add your Netlify URL here
+    'https://your-frontend-domain.netlify.app' // Replace with actual Netlify URL
   ],
   credentials: true
 }));

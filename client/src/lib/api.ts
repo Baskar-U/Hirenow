@@ -7,16 +7,38 @@ const getAuthHeader = (): Record<string, string> => {
   return token ? { Authorization: `Bearer ${token}` } : {};
 };
 
+const handleApiResponse = async (response: Response, operation: string) => {
+  if (!response.ok) {
+    const errorText = await response.text();
+    console.error(`${operation} failed:`, response.status, errorText);
+    throw new Error(`${operation} failed: ${response.status}`);
+  }
+  
+  const contentType = response.headers.get("content-type");
+  if (!contentType || !contentType.includes("application/json")) {
+    const text = await response.text();
+    console.error(`${operation} - Non-JSON response:`, text);
+    throw new Error(`${operation} - Server returned non-JSON response`);
+  }
+  
+  return response.json();
+};
+
 export const api = {
   // Auth
   login: async (email: string, password: string) => {
-    const response = await fetch(`${API_BASE_URL}/api/auth/login`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ email, password }),
-    });
-    if (!response.ok) throw new Error("Login failed");
-    return response.json();
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/auth/login`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email, password }),
+      });
+      
+      return await handleApiResponse(response, "Login");
+    } catch (error) {
+      console.error("API Error:", error);
+      throw error;
+    }
   },
 
   // Jobs

@@ -83,6 +83,20 @@ app.use((req, res, next) => {
     });
   });
 
+  // Root endpoint
+  app.get('/', (req, res) => {
+    res.json({ 
+      message: 'HireNow API Server',
+      version: '1.0.0',
+      endpoints: {
+        health: '/health',
+        auth: '/api/auth',
+        jobs: '/api/jobs',
+        applications: '/api/applications'
+      }
+    });
+  });
+
   const port = parseInt(process.env.PORT || '5000', 10);
   server.listen({
     port,
